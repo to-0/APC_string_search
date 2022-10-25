@@ -11,10 +11,11 @@ struct Arguments {
 	unsigned int pattern_new_lines{0};
 	size_t chars_before_first_new_line{ 0 };
 };
-int calc_pattern_hash(Arguments &arguments) {
+Arguments argum;
+int calc_pattern_hash() {
 	int h = 0;
-	for (size_t i = 0; i < arguments.pattern_length; i++) {
-		h += int(arguments.pattern[i]);
+	for (size_t i = 0; i < argum.pattern_length; i++) {
+		h += int(argum.pattern[i]);
 	}
 	return h;
 }
@@ -23,58 +24,58 @@ struct Position {
 	uint64_t row { 0 };
 	uint64_t distance{0}; // distance from the file beginning
 };
-Position calculate_beginning_position(Position current, int overall_distance,Arguments &arguments,Position &beginning) {
-	if (arguments.pattern_new_lines != 0) { //multi line pattern
-		beginning.column = arguments.rows_columns[0] - arguments.chars_before_first_new_line;//-1 because we count new line as it still being in the columns
-		beginning.row = current.row - arguments.pattern_new_lines;
+Position calculate_beginning_position(Position current, int overall_distance,Position &beginning) {
+	if (argum.pattern_new_lines != 0) { //multi line pattern
+		beginning.column = argum.rows_columns[0] - argum.chars_before_first_new_line-1;//-1 because we count new line as it still being in the columns
+		beginning.row = current.row - argum.pattern_new_lines;
 	}
 	else { //one line pattern
-		beginning.column = current.column - arguments.pattern_length+1;
+		beginning.column = current.column - argum.pattern_length+1;
 		beginning.row = current.row;
 	}
-	beginning.distance = overall_distance - static_cast<uint64_t>(arguments.pattern_length) + 1;
+	beginning.distance = overall_distance - static_cast<uint64_t>(argum.pattern_length) + 1;
 	return beginning;
 }
 
-int check_patterns(std::vector<char> buffer, Arguments &arguments) {
+int check_patterns(std::vector<char> buffer)  {
 	for (size_t i = 0; i < buffer.size(); i++) {
-		if (buffer[i] != arguments.pattern[i]) {
+		if (buffer[i] != argum.pattern[i]) {
 			return 0; //they match
 		}
 	}
 	return 1;
 }
-int char_lookup(Arguments &arguments) {
+int char_lookup() {
 	std::vector<char> buffer;
 	char c{' '};
 	int hash{0};
 	Position current_position;
 	Position last_position;
 	Position beginning_position;
-	int last_left{-1}; //if last position had left neighbour in the distance of N, 0 if false 1 if True
-	std::vector<char> hold_buffer; // if we find pattern but there is no pattern in the distance n to the left - we use this to check the right side
-	int pattern_hash = calc_pattern_hash(arguments);
+	int last_left{-1}; //if last position had left neighbour in the distance of N, 0 if false 1 if Truef
+	int pattern_hash = calc_pattern_hash();
 	uint32_t overall_distance{ 0 };
-	while(true) {
-		arguments.in.get(c); //read character
-		if (arguments.in.gcount() == 0 || int(c) > 127 || int(c)<0) { //check if we were able to read something or if we read valid char 
+	while(argum.in.get(c)) { //read character
+		if (int(c) > 127 || int(c)<0) { //check if we were able to read something or if we read valid char 
+			std::cout << current_position.row;
+			std::cout << "Neprecital som";
 			return 1;
 		}
 		buffer.insert(buffer.end(), c);
 		hash += int(c);
-		if (buffer.size() > arguments.pattern_length) {
+		if (buffer.size() > argum.pattern_length) {
 			hash -= int(buffer[0]); //recalculate hash
 			buffer.erase(buffer.begin()); //delete the first element
 		}
 		if (hash == pattern_hash) {
-			calculate_beginning_position(current_position, overall_distance, arguments, beginning_position);
+			calculate_beginning_position(current_position, overall_distance, beginning_position);
 			//check if patterns match
-			if (check_patterns(buffer, arguments) == 1) {
+			if (check_patterns(buffer) == 1) {
 				if (last_left == -1) { //this is the first pattern found so there can't be neighbour from the left
 					last_left = 0;
 				}
 				else { // we can look to the left
-					if (beginning_position.distance - last_position.distance <= arguments.n) { // check the distance between current and last to the left
+					if (beginning_position.distance - last_position.distance <= argum.n) { // check the distance between current and last to the left
 						if (last_left == 0) { //if the last pattern didn't have a neighbour to the left, we now found out that the last pattern has a neighbour to the right in the distance of N
 							std::cout << last_position.row << ' ' << last_position.column << '\n';
 						}
@@ -86,22 +87,20 @@ int char_lookup(Arguments &arguments) {
 					}
 				}
 				last_position = beginning_position; //last position of the pattern to the left
-				//last_position.row = beginning_position.row;
-				//last_position.column = beginning_position.column;
-				//last_position.distance = beginning_position.distance;
 			}
 		}
-		if (arguments.in.eof()) { //check if we are not at the end of the file, maybe move this to the end of the loop
+		if (argum.in.eof()) { //check if we are not at the end of the file, maybe move this to the end of the loop
+			std::cout << "EOF";
 			return 0;
 		}
 		overall_distance++;
 		//moving 
 		if (c == '\n') {
-			//push the number of columns of this row 
-			arguments.rows_columns.insert(arguments.rows_columns.begin(), current_position.column+1); 
+			//push the number of columns of this row #TOTO POZRIET CI DOBRE ROBIM
+			argum.rows_columns.insert(argum.rows_columns.end(), current_position.column+1); 
 			//if we exceed the length, remove the first element
-			if (arguments.rows_columns.size() > arguments.pattern_new_lines) {
-				arguments.rows_columns.erase(arguments.rows_columns.begin());
+			if (argum.rows_columns.size() > argum.pattern_new_lines) {
+				argum.rows_columns.erase(argum.rows_columns.begin());
 			}
 			current_position.row += 1;
 			current_position.column = 0;
@@ -110,6 +109,7 @@ int char_lookup(Arguments &arguments) {
 			current_position.column += 1;
 		}
 	}
+	return 0;
 }
 
 
@@ -123,13 +123,13 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	std::string input_path = std::string(argv[1]);
-	Arguments argum;
+
 	argum.in.open(input_path);
 	if (!argum.in.is_open()) {
 		return 1;
 	}
-	//argum.pattern = std::string(argv[2]);
-	argum.pattern = "a\na";
+	argum.pattern = std::string(argv[2]);
+	argum.pattern = "a\n\n\na";
 	if(argum.pattern.empty()) {
 		return 1;
 	}
@@ -149,5 +149,5 @@ int main(int argc, char *argv[])
 	if (argum.n == 0) {
 		return 1;
 	}
-	return char_lookup(argum);
+	return char_lookup();
 }
