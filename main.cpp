@@ -37,12 +37,22 @@ Position calculate_beginning_position(Position current, int overall_distance,Pos
 	return beginning;
 }
 
-int check_patterns(std::vector<char> buffer)  {
-	for (size_t i = 0; i < buffer.size(); i++) {
-		if (buffer[i] != argum.pattern[i]) {
-			return 0; //they match
+int check_patterns(std::vector<char> buffer, size_t start_index)  {
+	size_t i{ 0 };
+	size_t j{ start_index };
+	while (i < argum.pattern_length) {
+		if (buffer[j] != argum.pattern[i]) {
+			return 0;
 		}
+		i++;
+		j = (j + 1) % argum.pattern_length;
 	}
+	//for (size_t i = start_index; i < buffer.size(); ) {
+		//if (buffer[i] != argum.pattern[i]) {
+			//return 0; //they match
+		//}
+	//}
+	//std::cout << "\n They match\n";
 	return 1;
 }
 int char_lookup() {
@@ -54,23 +64,34 @@ int char_lookup() {
 	Position beginning_position;
 	int last_left{-1}; //if last position had left neighbour in the distance of N, 0 if false 1 if Truef
 	int pattern_hash = calc_pattern_hash();
+	//buffer.resize(argum.pattern_length);
+	size_t first_index{ 0 };
+	size_t insert_index{ 0 };
 	uint32_t overall_distance{ 0 };
 	while(argum.in.get(c)) { //read character
-		if (int(c) > 127 || int(c)<0) { //check if we were able to read something or if we read valid char 
+		if (int(c) > 127 || int(c) < 0) { //check if we were able to read something or if we read valid char 
 			std::cout << current_position.row;
 			std::cout << "Neprecital som";
 			return 1;
 		}
-		buffer.insert(buffer.end(), c);
+		//buffer[insert_index] = c;
+		//std::cout << "First " << first_index << "Inserted " << insert_index << '\n';
 		hash += int(c);
-		if (buffer.size() > argum.pattern_length) {
-			hash -= int(buffer[0]); //recalculate hash
-			buffer.erase(buffer.begin()); //delete the first element
+		//std::cout << current_position.row << " " << current_position.column << '\n';
+		//std::cout << "Buffer size " << buffer.size() << '\n';
+		if (buffer.size() >= argum.pattern_length) {
+			hash -= int(buffer[first_index]); //recalculate hash
+			buffer[insert_index] = c;
 		}
-		if (hash == pattern_hash) {
+		else {
+			buffer.insert(buffer.end(), c);
+		}
+		first_index = (first_index + 1) % argum.pattern_length;
+		if (hash == pattern_hash && buffer.size() == argum.pattern_length) {
+			//std::cout << "\nHash match\n";
 			calculate_beginning_position(current_position, overall_distance, beginning_position);
 			//check if patterns match
-			if (check_patterns(buffer) == 1) {
+			if (check_patterns(buffer,first_index) == 1) {
 				if (last_left == -1) { //this is the first pattern found so there can't be neighbour from the left
 					last_left = 0;
 				}
@@ -108,6 +129,8 @@ int char_lookup() {
 		else {
 			current_position.column += 1;
 		}
+		
+		insert_index = (insert_index + 1) % argum.pattern_length;
 	}
 	return 0;
 }
@@ -129,7 +152,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	argum.pattern = std::string(argv[2]);
-	argum.pattern = "a\n\n\na";
+	//argum.pattern = "a\n\n\na";
 	if(argum.pattern.empty()) {
 		return 1;
 	}
