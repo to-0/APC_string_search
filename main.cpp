@@ -57,6 +57,7 @@ int check_patterns(std::vector<char> buffer, size_t start_index)  {
 }
 int char_lookup() {
 	std::vector<char> buffer;
+	char file_buffer[8000];
 	char c{' '};
 	int hash{0};
 	Position current_position;
@@ -68,6 +69,77 @@ int char_lookup() {
 	size_t first_index{ 0 };
 	size_t insert_index{ 0 };
 	uint32_t overall_distance{ 0 };
+	while (true) {
+		argum.in.read(file_buffer, 8000);
+		auto n = argum.in.gcount();
+		if (argum.in.gcount() > 0) {
+			for (auto i = 0; i < n;i++) {
+				c = file_buffer[i];
+				if (int(c) > 127 || int(c) < 0) { //check if we were able to read something or if we read valid char 
+					std::cout << current_position.row;
+					std::cout << "Neprecital som";
+					return 1;
+				}
+				//buffer[insert_index] = c;
+				//std::cout << "First " << first_index << "Inserted " << insert_index << '\n';
+				hash += int(c);
+				//std::cout << current_position.row << " " << current_position.column << '\n';
+				//std::cout << "Buffer size " << buffer.size() << '\n';
+				if (buffer.size() >= argum.pattern_length) {
+					hash -= int(buffer[first_index]); //recalculate hash
+					buffer[insert_index] = c;
+				}
+				else {
+					buffer.insert(buffer.end(), c);
+				}
+				first_index = (first_index + 1) % argum.pattern_length;
+				if (hash == pattern_hash && buffer.size() == argum.pattern_length) {
+					//std::cout << "\nHash match\n";
+					calculate_beginning_position(current_position, overall_distance, beginning_position);
+					//check if patterns match
+					if (check_patterns(buffer, first_index) == 1) {
+						if (last_left == -1) { //this is the first pattern found so there can't be neighbour from the left
+							last_left = 0;
+						}
+						else { // we can look to the left
+							if (beginning_position.distance - last_position.distance <= argum.n) { // check the distance between current and last to the left
+								if (last_left == 0) { //if the last pattern didn't have a neighbour to the left, we now found out that the last pattern has a neighbour to the right in the distance of N
+									std::cout << last_position.row << ' ' << last_position.column << '\n';
+								}
+								std::cout << beginning_position.row << ' ' << beginning_position.column << '\n'; //write it out
+								last_left = 1;
+							}
+							else { //check the right side
+								last_left = 0;
+							}
+						}
+						last_position = beginning_position; //last position of the pattern to the left
+					}
+				}
+				overall_distance++;
+				//moving 
+				if (c == '\n') {
+					//push the number of columns of this row #TOTO POZRIET CI DOBRE ROBIM
+					argum.rows_columns.insert(argum.rows_columns.end(), current_position.column + 1);
+					//if we exceed the length, remove the first element
+					if (argum.rows_columns.size() > argum.pattern_new_lines) {
+						argum.rows_columns.erase(argum.rows_columns.begin());
+					}
+					current_position.row += 1;
+					current_position.column = 0;
+				}
+				else {
+					current_position.column += 1;
+				}
+
+				insert_index = (insert_index + 1) % argum.pattern_length;
+			}
+		}
+		if (argum.in.eof()) {
+			return 0;
+		}
+	}
+	/*
 	while(argum.in.get(c)) { //read character
 		if (int(c) > 127 || int(c) < 0) { //check if we were able to read something or if we read valid char 
 			std::cout << current_position.row;
@@ -131,7 +203,7 @@ int char_lookup() {
 		}
 		
 		insert_index = (insert_index + 1) % argum.pattern_length;
-	}
+	}*/
 	return 0;
 }
 
