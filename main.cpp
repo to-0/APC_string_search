@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -26,14 +25,14 @@ struct Position {
 };
 Position calculate_beginning_position(Position current, int overall_distance,Position &beginning) {
 	if (argum.pattern_new_lines != 0) { //multi line pattern
-		beginning.column = argum.rows_columns[0] - argum.chars_before_first_new_line-1;//-1 because we count new line as it still being in the columns
-		beginning.row = current.row - argum.pattern_new_lines;
+		beginning.column = argum.rows_columns[0] - argum.chars_before_first_new_line-1;//
+		beginning.row = current.row - argum.pattern_new_lines; //because we calculate the position before moving row
 	}
 	else { //one line pattern
-		beginning.column = current.column - argum.pattern_length+1;
+		beginning.column = current.column - argum.pattern_length;
 		beginning.row = current.row;
 	}
-	beginning.distance = overall_distance - static_cast<uint64_t>(argum.pattern_length) + 1;
+	beginning.distance = overall_distance - static_cast<uint64_t>(argum.pattern_length)+1;
 	return beginning;
 }
 
@@ -47,12 +46,6 @@ int check_patterns(std::vector<char> buffer, size_t start_index)  {
 		i++;
 		j = (j + 1) % argum.pattern_length;
 	}
-	//for (size_t i = start_index; i < buffer.size(); ) {
-		//if (buffer[i] != argum.pattern[i]) {
-			//return 0; //they match
-		//}
-	//}
-	//std::cout << "\n They match\n";
 	return 1;
 }
 int char_lookup() {
@@ -75,10 +68,24 @@ int char_lookup() {
 		if (argum.in.gcount() > 0) {
 			for (auto i = 0; i < n;i++) {
 				c = file_buffer[i];
-				if (int(c) > 127 || int(c) < 0) { //check if we were able to read something or if we read valid char 
+				if (int(c) > 127 || int(c) <= 0) { //check if we were able to read something or if we read valid char 
 					std::cout << current_position.row;
-					std::cout << "Neprecital som";
+					std::cout << "Something went wrong";
 					return 1;
+				}
+				//moving 
+				if (c == '\n') {
+					//push the number of columns of this row #TOTO POZRIET CI DOBRE ROBIM
+					argum.rows_columns.insert(argum.rows_columns.end(), current_position.column + 1);
+					//if we exceed the length, remove the first element
+					if (argum.rows_columns.size() > argum.pattern_new_lines) {
+						argum.rows_columns.erase(argum.rows_columns.begin());
+					}
+					current_position.row += 1;
+					current_position.column = 0;
+				}
+				else {
+					current_position.column += 1;
 				}
 				//buffer[insert_index] = c;
 				//std::cout << "First " << first_index << "Inserted " << insert_index << '\n';
@@ -117,20 +124,7 @@ int char_lookup() {
 					}
 				}
 				overall_distance++;
-				//moving 
-				if (c == '\n') {
-					//push the number of columns of this row #TOTO POZRIET CI DOBRE ROBIM
-					argum.rows_columns.insert(argum.rows_columns.end(), current_position.column + 1);
-					//if we exceed the length, remove the first element
-					if (argum.rows_columns.size() > argum.pattern_new_lines) {
-						argum.rows_columns.erase(argum.rows_columns.begin());
-					}
-					current_position.row += 1;
-					current_position.column = 0;
-				}
-				else {
-					current_position.column += 1;
-				}
+				
 
 				insert_index = (insert_index + 1) % argum.pattern_length;
 			}
@@ -139,76 +133,8 @@ int char_lookup() {
 			return 0;
 		}
 	}
-	/*
-	while(argum.in.get(c)) { //read character
-		if (int(c) > 127 || int(c) < 0) { //check if we were able to read something or if we read valid char 
-			std::cout << current_position.row;
-			std::cout << "Neprecital som";
-			return 1;
-		}
-		//buffer[insert_index] = c;
-		//std::cout << "First " << first_index << "Inserted " << insert_index << '\n';
-		hash += int(c);
-		//std::cout << current_position.row << " " << current_position.column << '\n';
-		//std::cout << "Buffer size " << buffer.size() << '\n';
-		if (buffer.size() >= argum.pattern_length) {
-			hash -= int(buffer[first_index]); //recalculate hash
-			buffer[insert_index] = c;
-		}
-		else {
-			buffer.insert(buffer.end(), c);
-		}
-		first_index = (first_index + 1) % argum.pattern_length;
-		if (hash == pattern_hash && buffer.size() == argum.pattern_length) {
-			//std::cout << "\nHash match\n";
-			calculate_beginning_position(current_position, overall_distance, beginning_position);
-			//check if patterns match
-			if (check_patterns(buffer,first_index) == 1) {
-				if (last_left == -1) { //this is the first pattern found so there can't be neighbour from the left
-					last_left = 0;
-				}
-				else { // we can look to the left
-					if (beginning_position.distance - last_position.distance <= argum.n) { // check the distance between current and last to the left
-						if (last_left == 0) { //if the last pattern didn't have a neighbour to the left, we now found out that the last pattern has a neighbour to the right in the distance of N
-							std::cout << last_position.row << ' ' << last_position.column << '\n';
-						}
-						std::cout << beginning_position.row << ' ' << beginning_position.column << '\n'; //write it out
-						last_left = 1;
-					}
-					else { //check the right side
-						last_left = 0;
-					}
-				}
-				last_position = beginning_position; //last position of the pattern to the left
-			}
-		}
-		if (argum.in.eof()) { //check if we are not at the end of the file, maybe move this to the end of the loop
-			std::cout << "EOF";
-			return 0;
-		}
-		overall_distance++;
-		//moving 
-		if (c == '\n') {
-			//push the number of columns of this row #TOTO POZRIET CI DOBRE ROBIM
-			argum.rows_columns.insert(argum.rows_columns.end(), current_position.column+1); 
-			//if we exceed the length, remove the first element
-			if (argum.rows_columns.size() > argum.pattern_new_lines) {
-				argum.rows_columns.erase(argum.rows_columns.begin());
-			}
-			current_position.row += 1;
-			current_position.column = 0;
-		}
-		else {
-			current_position.column += 1;
-		}
-		
-		insert_index = (insert_index + 1) % argum.pattern_length;
-	}*/
 	return 0;
 }
-
-
-
 int main(int argc, char *argv[])
 {
 	if (argc == 1) {
@@ -224,12 +150,13 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	argum.pattern = std::string(argv[2]);
-	//argum.pattern = "a\n\n\na";
+	//argum.pattern = "\n\n\n";
 	if(argum.pattern.empty()) {
 		return 1;
 	}
 	argum.pattern_length = argum.pattern.length();
 	int new_lines{ 0 };
+	argum.chars_before_first_new_line = 0;
 	for (size_t i = 0; i < argum.pattern_length; i++) {
 		if (argum.pattern[i] == '\n') {
 			if (new_lines == 0) {
