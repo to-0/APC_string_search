@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#define N 8000
 struct Arguments {
 	std::ifstream in;
 	std::string pattern{""};
@@ -50,7 +51,7 @@ int check_patterns(std::vector<char> buffer, size_t start_index)  {
 }
 int char_lookup() {
 	std::vector<char> buffer;
-	char file_buffer[8000];
+	char file_buffer[N];
 	char c{' '};
 	int hash{0};
 	Position current_position;
@@ -63,14 +64,13 @@ int char_lookup() {
 	size_t insert_index{ 0 };
 	uint32_t overall_distance{ 0 };
 	while (true) {
-		argum.in.read(file_buffer, 8000);
+		argum.in.read(file_buffer, N);
 		auto n = argum.in.gcount();
 		if (argum.in.gcount() > 0) {
 			for (auto i = 0; i < n;i++) {
 				c = file_buffer[i];
 				if (int(c) > 127 || int(c) <= 0) { //check if we were able to read something or if we read valid char 
-					std::cout << current_position.row;
-					std::cout << "Something went wrong";
+					std::cerr << "Incorrect input";
 					return 1;
 				}
 				//moving 
