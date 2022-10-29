@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <stdint.h>
+#include <string>
 #define N 8000
 struct Arguments {
 	std::ifstream in;
@@ -25,6 +27,8 @@ struct Position {
 	uint64_t distance{0}; // distance from the file beginning
 };
 Position calculate_beginning_position(Position current, int overall_distance,Position &beginning) {
+	//std::cout << "Calculate position\n";
+	//std::cout << "Argum rows columns size: " << argum.rows_columns.size() << "\n";
 	if (argum.pattern_new_lines != 0) { //multi line pattern
 		beginning.column = argum.rows_columns[0] - argum.chars_before_first_new_line-1;//
 		beginning.row = current.row - argum.pattern_new_lines; //because we calculate the position before moving row
@@ -34,12 +38,14 @@ Position calculate_beginning_position(Position current, int overall_distance,Pos
 		beginning.row = current.row;
 	}
 	beginning.distance = overall_distance - static_cast<uint64_t>(argum.pattern_length)+1;
+	//std::cout << "Prezili sme\n";
 	return beginning;
 }
 
 int check_patterns(std::vector<char> buffer, size_t start_index)  {
 	size_t i{ 0 };
 	size_t j{ start_index };
+	//std::cout << "Check pattern\n";
 	while (i < argum.pattern_length) {
 		if (buffer[j] != argum.pattern[i]) {
 			return 0;
@@ -65,9 +71,10 @@ int char_lookup() {
 	uint32_t overall_distance{ 0 };
 	while (true) {
 		argum.in.read(file_buffer, N);
-		auto n = argum.in.gcount();
+		auto gc = argum.in.gcount();
+		//std::cout << "Precital som tolkoto znakov do velkeho bufra " << gc << "\n";
 		if (argum.in.gcount() > 0) {
-			for (auto i = 0; i < n;i++) {
+			for (auto i = 0; i < gc;i++) {
 				c = file_buffer[i];
 				if (int(c) > 127 || int(c) <= 0) { //check if we were able to read something or if we read valid char 
 					std::cerr << "Incorrect input";
@@ -77,8 +84,10 @@ int char_lookup() {
 				if (c == '\n') {
 					//push the number of columns of this row #TOTO POZRIET CI DOBRE ROBIM
 					argum.rows_columns.insert(argum.rows_columns.end(), current_position.column + 1);
+					//std::cout << "Pridal som do argum rows columns teraz " << argum.rows_columns.size() << "\n";
 					//if we exceed the length, remove the first element
 					if (argum.rows_columns.size() > argum.pattern_new_lines) {
+						//std::cout << "Mazem argum.rows.columns o velkosti " << argum.rows_columns.size() << "\n";
 						argum.rows_columns.erase(argum.rows_columns.begin());
 					}
 					current_position.row += 1;
@@ -90,7 +99,7 @@ int char_lookup() {
 				//buffer[insert_index] = c;
 				//std::cout << "First " << first_index << "Inserted " << insert_index << '\n';
 				hash += int(c);
-				//std::cout << current_position.row << " " << current_position.column << '\n';
+				//std::cout << "Current position :" << current_position.row << " " << current_position.column << '\n';
 				//std::cout << "Buffer size " << buffer.size() << '\n';
 				if (buffer.size() >= argum.pattern_length) {
 					hash -= int(buffer[first_index]); //recalculate hash
@@ -99,8 +108,9 @@ int char_lookup() {
 				else {
 					buffer.insert(buffer.end(), c);
 				}
+				//std::cout << "Tu som\n";
 				first_index = (first_index + 1) % argum.pattern_length;
-				if (hash == pattern_hash && buffer.size() == argum.pattern_length) {
+				if (hash == pattern_hash && buffer.size() == argum.pattern_length && argum.rows_columns.size() == argum.pattern_new_lines) {
 					//std::cout << "\nHash match\n";
 					calculate_beginning_position(current_position, overall_distance, beginning_position);
 					//check if patterns match
@@ -130,6 +140,7 @@ int char_lookup() {
 			}
 		}
 		if (argum.in.eof()) {
+			//std::cout << "EOF\n";
 			return 0;
 		}
 	}
@@ -150,11 +161,14 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	argum.pattern = std::string(argv[2]);
-	//argum.pattern = "\n\n\n";
+	//argum.pattern = "\na";
 	if(argum.pattern.empty()) {
 		return 1;
 	}
 	argum.pattern_length = argum.pattern.length();
+	if (argum.pattern_length >= 256) {
+		return 1;
+	}
 	int new_lines{ 0 };
 	argum.chars_before_first_new_line = 0;
 	for (size_t i = 0; i < argum.pattern_length; i++) {
@@ -166,8 +180,18 @@ int main(int argc, char *argv[])
 		}
 	}
 	argum.pattern_new_lines = new_lines;
-
-	argum.n = std::atoi(argv[3]);
+	long long a{0};
+	try {
+		a = std::stoll(std::string(argv[3]));
+	}
+	catch (std::exception& e) {
+		return 1;
+	}
+	
+	if (a < 0 || a > UINT32_MAX) {
+		return 1;
+	}
+	argum.n = static_cast<uint32_t>(a);
 	if (argum.n == 0) {
 		return 1;
 	}
